@@ -1,47 +1,53 @@
 const mongoose = require('mongoose'),
 	validator = require('validator'),
 	bcrypt = require('bcryptjs'),
+	Task = require('./tasks'),
 	jwt = require('jsonwebtoken');
 
-const userSchema = new mongoose.Schema({
-	name     : {
-		type     : String,
-		required : true
-	},
-	password : {
-		type      : String,
-		required  : true,
-		trim      : true,
-		minlength : 8,
-		validate(value) {
-			if (value.toLowerCase() === 'password') {
-				throw new Error('Password should not be password');
+const userSchema = new mongoose.Schema(
+	{
+		name     : {
+			type     : String,
+			required : true
+		},
+		password : {
+			type      : String,
+			required  : true,
+			trim      : true,
+			minlength : 8,
+			validate(value) {
+				if (value.toLowerCase() === 'password') {
+					throw new Error('Password should not be password');
+				}
 			}
-		}
-	},
-	email    : {
-		type     : String,
-		unique   : true,
-		required : true,
-		validate(value) {
-			if (!validator.isEmail(value)) {
-				throw new Error('Invalid email');
+		},
+		email    : {
+			type     : String,
+			unique   : true,
+			required : true,
+			validate(value) {
+				if (!validator.isEmail(value)) {
+					throw new Error('Invalid email');
+				}
 			}
-		}
-	},
-	age      : {
-		type    : Number,
-		default : 0
-	},
-	tokens   : [
-		{
-			token : {
-				type     : String,
-				required : true
+		},
+		age      : {
+			type    : Number,
+			default : 0
+		},
+		tokens   : [
+			{
+				token : {
+					type     : String,
+					required : true
+				}
 			}
-		}
-	]
-});
+		]
+	},
+	{
+		timestamps : true
+	}
+);
 
 userSchema.methods.generateAuthToken = async function() {
 	const user = this;
@@ -75,6 +81,12 @@ userSchema.statics.findByCredentials = async (email, password) => {
 	return user;
 };
 
+userSchema.virtual('tasks', {
+	ref          : 'Task',
+	localField   : '_id',
+	foreignField : 'owner'
+});
+
 userSchema.pre('save', async function(next) {
 	const user = this;
 
@@ -82,6 +94,12 @@ userSchema.pre('save', async function(next) {
 		user.password = await bcrypt.hash(user.password, 8);
 	}
 
+	next();
+});
+
+userSchema.pre('remove', async function(next) {
+	const user = this;
+	await Task.deleteMany({ owner: user._id });
 	next();
 });
 
