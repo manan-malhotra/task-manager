@@ -42,7 +42,10 @@ const userSchema = new mongoose.Schema(
 					required : true
 				}
 			}
-		]
+		],
+		avatar   : {
+			type : Buffer
+		}
 	},
 	{
 		timestamps : true
@@ -51,7 +54,7 @@ const userSchema = new mongoose.Schema(
 
 userSchema.methods.generateAuthToken = async function() {
 	const user = this;
-	const token = jwt.sign({ _id: user._id.toString() }, 'thisismanan');
+	const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_TOKEN);
 
 	user.tokens = user.tokens.concat({ token });
 	await user.save();
@@ -65,6 +68,7 @@ userSchema.methods.toJSON = function() {
 	delete userObject.tokens;
 	delete userObject.__v;
 	delete userObject._id;
+	delete userObject.avatar;
 
 	return userObject;
 };
